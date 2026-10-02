@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Yam</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% 12%,#06223d,#02050f 70%);color:#d7ecff;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:12px}
+.hud{position:relative;width:170px;height:170px;margin:8px 0;flex:none}
+.r{position:absolute;inset:0;border-radius:50%;border:2px solid transparent;border-top-color:#19b5ff;border-bottom-color:#19b5ff;animation:s 6s linear infinite}
+.r2{inset:14px;border:2px dashed #19b5ff66;animation-duration:10s;animation-direction:reverse}
+.r3{inset:30px;border-left-color:#19b5ff;border-right-color:#19b5ff;border-top-color:transparent;border-bottom-color:transparent;animation-duration:3s}
+.core{position:absolute;inset:50px;border-radius:50%;background:radial-gradient(circle,#7fdcff,#0a6cc4 70%);box-shadow:0 0 30px #19b5ff;animation:p 2.4s ease-in-out infinite}
+.talk .core,.talk #foto{animation-duration:.5s}
+#foto{display:none;width:min(60vw,240px);aspect-ratio:1;border-radius:50%;object-fit:cover;box-shadow:0 0 30px #1e88e5;margin:8px 0;animation:p 2.4s ease-in-out infinite}
+@keyframes s{to{transform:rotate(360deg)}}@keyframes p{50%{transform:scale(1.04);opacity:.85}}
+h2{margin:4px 0;letter-spacing:6px;color:#81d4fa}
+#log{width:100%;max-width:520px;max-height:42vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px}
+.m{max-width:85%;padding:9px 13px;border-radius:14px;line-height:1.4;white-space:pre-wrap;border:1px solid #19b5ff44}
+.u{align-self:flex-end;background:#0b3a66}.y{align-self:flex-start;background:#07182b}
+#fila{display:flex;gap:6px;width:100%;max-width:520px;margin-top:8px}
+input,textarea,select,button{font:inherit;color:#fff;background:#0b1a33;border:1px solid #1e88e5;border-radius:14px;padding:10px}
+#q{flex:1;min-width:0}button{background:#0b3a66;border:0;font-weight:700;cursor:pointer}
+details{width:100%;max-width:520px;margin-top:12px;font-size:14px}summary{cursor:pointer;color:#4fc3f7}
+details input,details textarea{width:100%;margin:4px 0 10px}
+.ap{display:flex;justify-content:space-between;gap:8px;background:#0b1a33;border-radius:10px;padding:6px 10px;margin:4px 0;font-size:13px}
+.ap button{background:#5a1a1a;padding:2px 10px}.red{background:#5a1a1a}
+</style></head><body>
+<div class="hud" id="hud"><div class="r"></div><div class="r r2"></div><div class="r r3"></div><div class="core"></div></div>
+<img id="foto" alt="Yam">
+<h2 id="nom">YAM</h2>
+<div id="log"></div>
+<div id="fila"><input id="q" placeholder="O escribe aquí..." autocomplete="off"><button id="mic">🎤</button><button id="go">Enviar</button></div>
+
+<details id="dap"><summary id="sap">📚 Apuntes</summary>
+<textarea id="at" rows="5" placeholder="Pega aquí tus apuntes o memorias y pulsa Agregar"></textarea>
+<input id="an" placeholder="Título (opcional)">
+<button id="aa">Agregar apunte</button><div id="al"></div></details>
+
+<details open><summary>⚙️ Configuración</summary>
+<label>Nombre de tu IA</label><input id="nm">
+<label>Clave Gemini (Google AI Studio)</label><input id="gk" type="password">
+<label>Modelo de Gemini (si falla o se acaba el cupo, Yam prueba otros solo)</label><input id="gm" placeholder="gemini-flash-lite-latest">
+<label>Clave ElevenLabs (opcional; vacía = voz gratis del celular)</label><input id="ek" type="password" placeholder="sk_...">
+<label>ID de voz de ElevenLabs</label><input id="ev">
+<label>Contactos (uno por línea: Nombre=+52...)</label><textarea id="ct" rows="3" placeholder="Mamá=+52..."></textarea>
+<label>Imagen de Yam (opcional)</label><input id="im" type="file" accept="image/*">
+<div style="display:flex;gap:8px"><button id="sv">Guardar</button><button id="clr" class="red">Borrar memoria</button></div>
+</details>
+
+<script>
+const $=i=>document.getElementById(i);
+const L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert('No hay espacio para guardar más.')}};
+let cfg=L('yam_cfg',{}),hist=L('yam_hist',[]),notes=L('yam_notes',[]);
+const nombre=()=>cfg.nm||'Yam';
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function fill(){$('nm').value=nombre();$('gk').value=cfg.gk||'';$('gm').value=cfg.gm||'';$('ek').value=cfg.ek||'';$('ev').value=cfg.ev||'tnSpp4vdxKPjI9w0GnoV';$('ct').value=cfg.ct||'';$('nom').textContent=nombre().toUpperCase();document.title=nombre()}
+function add(role,t){const d=document.createElement('div');d.className='m '+(role=='user'?'u':'y');d.textContent=t;$('log').appendChild(d);$('log').scrollTop=1e9}
+function showImg(){const s=L('yam_img',null);if(s){$('foto').src=s;$('foto').style.display='block';$('hud').style.display='none'}}
+function drawNotes(){$('sap').textContent='📚 Apuntes ('+notes.length+')';$('al').innerHTML='';notes.forEach((n,i)=>{const d=document.createElement('div');d.className='ap';d.innerHTML='<span></span><button>✕</button>';d.firstChild.textContent=n.n+' ('+Math.round(n.t.length/1000)+'k)';d.lastChild.onclick=()=>{notes.splice(i,1);W('yam_notes',notes);drawNotes()};$('al').appendChild(d)})}
+fill();showImg();drawNotes();hist.forEach(h=>add(h.role,h.parts[0].text));
+if(!hist.length)add('model','Hola, soy '+nombre()+'. Dime en qué te ayudo.');
+
+$('sv').onclick=()=>{cfg={...cfg,nm:$('nm').value.trim(),gk:$('gk').value.trim(),gm:$('gm').value.trim(),ek:$('ek').value.trim(),ev:$('ev').value.trim(),ct:$('ct').value};delete cfg.ok;W('yam_cfg',cfg);fill()};
+$('clr').onclick=()=>{if(confirm('¿Borrar la conversación? Los apuntes se conservan.')){hist=[];W('yam_hist',hist);$('log').innerHTML=''}};
+$('aa').onclick=()=>{const t=$('at').value.trim();if(!t)return;notes.push({n:$('an').value.trim()||('Apunte '+(notes.length+1)),t:t.slice(0,200000)});W('yam_notes',notes);$('at').value='';$('an').value='';drawNotes()};
+$('im').onchange=e=>{const f=e.target.files[0];if(!f)return;const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=c.height=360;const s=Math.min(i.width,i.height);c.getContext('2d').drawImage(i,(i.width-s)/2,(i.height-s)/2,s,s,0,0,360,360);W('yam_img',c.toDataURL('image/jpeg',.85));showImg()};i.src=URL.createObjectURL(f)};
+
+function sys(){return 'Eres '+nombre()+', el asistente personal de Emanuel, estudiante de Químico Farmacobiólogo. Responde siempre en español, de forma cercana, clara y directa, sin sarcasmo. Ayuda con lo que te pida (recordatorios, mensajes, redacción, dudas, organización) y no lo conviertas todo en repasar temas de la carrera salvo que él lo pida. Usa los apuntes cuando sean relevantes.'+(notes.length?'\n\nAPUNTES:\n'+notes.map(n=>'## '+n.n+'\n'+n.t).join('\n\n').slice(0,300000):'')}
+async function gemini(){
+ const ms=[cfg.ok,cfg.gm,'gemini-flash-lite-latest','gemini-flash-latest','gemini-3.8-flash','gemini-2.5-flash-lite'].filter((m,i,a)=>m&&a.indexOf(m)==i);let err='';
+ for(const m of ms){
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+cfg.gk,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({systemInstruction:{parts:[{text:sys()}]},contents:hist.slice(-40)})});
+  const j=await r.json();const a=j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('');
+  if(a){if(cfg.ok!==m){cfg.ok=m;W('yam_cfg',cfg)}return a}
+  err=j.error?.message||'sin respuesta';if(![404,429,503].includes(r.status))break;
+ }
+ throw new Error(err);
+}
+async function speak(t){
+ $('hud').classList.add('talk');$('foto').classList.add('talk');const end=()=>{$('hud').classList.remove('talk');$('foto').classList.remove('talk')};
+ speechSynthesis.cancel();
+ try{if(cfg.ek){const r=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+(cfg.ev||'tnSpp4vdxKPjI9w0GnoV'),{method:'POST',headers:{'xi-api-key':cfg.ek,'Content-Type':'application/json'},body:JSON.stringify({text:t,model_id:'eleven_multilingual_v2'})});if(r.ok){const a=new Audio(URL.createObjectURL(await r.blob()));a.onended=end;a.play();return}}}catch(e){}
+ const u=new SpeechSynthesisUtterance(t);u.lang='es-MX';u.onend=end;speechSynthesis.speak(u);
+}
+function reminder(t){const m=norm(t).match(/(?:recuerdame|alarma|avisame).*?(\d+)\s*(min|hora|seg)/);if(!m)return;
+ const ms=m[1]*({min:6e4,hora:36e5,seg:1e3}[m[2]]);if(window.Notification&&Notification.permission=='default')Notification.requestPermission();
+ setTimeout(()=>{const x='Recordatorio: '+t;add('model',x);speak(x);if(window.Notification&&Notification.permission=='granted')new Notification(nombre(),{body:t})},ms)}
+function message(t){const m=t.match(/(?:m[aá]nda(?:le)?|env[ií]a(?:le)?|escr[ií]be(?:le)?)\s+(?:un\s+)?(?:mensaje|whatsapp)\s+a\s+(.+?)\s*(?::|,|que|diciendo)\s+(.+)/i);if(!m)return false;
+ const c=(cfg.ct||'').split('\n').map(l=>l.split('=')).find(p=>p[1]&&norm(p[0])==norm(m[1]));
+ if(!c){add('model','No encuentro a "'+m[1]+'" en tus contactos. Agrégalo en Configuración (Nombre=+52...).');return true}
+ add('model','Abriendo WhatsApp para '+c[0].trim()+'. Solo falta que pulses enviar.');
+ window.open('https://wa.me/'+c[1].replace(/\D/g,'')+'?text='+encodeURIComponent(m[2]),'_blank');return true}
+async function send(){
+ const t=$('q').value.trim();if(!t)return;
+ if(!cfg.gk){add('model','Pega tu clave de Gemini en Configuración y pulsa Guardar.');return}
+ $('q').value='';add('user',t);if(message(t))return;reminder(t);hist.push({role:'user',parts:[{text:t}]});
+ try{const a=await gemini();add('model',a);hist.push({role:'model',parts:[{text:a}]});speak(a)}
+ catch(e){add('model','Error: '+e.message);hist.pop()}
+ W('yam_hist',hist.slice(-200));
+}
+$('go').onclick=send;$('q').onkeydown=e=>{if(e.key=='Enter')send()};
+$('mic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){add('model','Este navegador no soporta dictado; usa Chrome.');return}
+ const r=new R();r.lang='es-MX';r.onresult=e=>{$('q').value=e.results[0][0].transcript;send()};r.start()};
+</script></body></html>
